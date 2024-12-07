@@ -2,11 +2,19 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
+const multer = require('multer');
+const { PDFDocument } = require('pdf-lib');
+const fs = require('fs');
+const path = require('path');
+const upload = multer({ dest: 'uploads/' });
+
 const { handleUserInput, updateConfigWithMongoData } = require('./chatbot');
 
 const User = require('./schemas/baseSchemas/User');
 const Chatbot = require('./schemas/baseSchemas/ChatBot');
 const Subscription = require('./schemas/simpleSchemas/Subscription')
+const Pdf = require('./schemas/baseSchemas/PDF_File')
+const PublicFile = require('./schemas/simpleSchemas/publicFile')
 
 dotenv.config();
 
@@ -167,6 +175,69 @@ app.get('/getSubscriptions', async (req, res) => {
         res.status(500).send(error)
     }
 })
+
+app.post('/createPDF', upload.single('file'), async (req, res) => {
+    try {
+        const { user, name, description, isPublic } = req.body;
+        let Owner = User.findOne({username: user})
+        const file = req.file;
+
+        if (!file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+
+        // Check if the PDF already exists in the public schema
+        const existingPublicFile = await PublicFile.findOne({ 'PDF_File.title': name });
+        if (existingPublicFile) {
+            return res.status(400).json({ error: 'PDF already exists in the public schema' });
+        }
+
+        // Read the uploaded PDF file
+        const filePath = path.join(__dirname, file.path);
+        const pdfBytes = fs.readFileSync(filePath);
+        const pdfDoc = await PDFDocument.load(pdfBytes);
+
+        // Add metadata to the PDF
+        pdfDoc.setTitle(name);
+        pdfDoc.setSubject(description);
+
+        // Save the modified PDF
+        const modifiedPdfBytes = await pdfDoc.save();
+        const modifiedFilePath = path.join(__dirname, 'uploads', `${name}.pdf`);
+        fs.writeFileSync(modifiedFilePath, modifiedPdfBytes);
+
+        // Convert Uint8Array to Buffer
+        const pdfBuffer = Buffer.from(modifiedPdfBytes);
+
+        // Create the PDF file schema entry
+        const newPdf = new Pdf({
+            title: name,
+            description: description,
+            pdfFile: {
+                data: pdfBuffer,
+                contentType: 'application/pdf'
+            }
+        });
+        await newPdf.save();
+
+        // If public, add to the public file schema
+        if (isPublic) {
+            const newPublicFile = new PublicFile({
+                owner: Owner._id, // Assuming you have user authentication
+                PDF_File: newPdf._id
+            });
+            await newPublicFile.save();
+        }
+
+        // Clean up the uploaded file
+        fs.unlinkSync(filePath);
+
+        res.status(200).send('Success! PDF has been created!');
+    } catch (error) {
+        console.error('Error creating PDF:', error);
+        res.status(500).json({ error: 'Error creating PDF' });
+    }
+});
 
 // Dev methods
 

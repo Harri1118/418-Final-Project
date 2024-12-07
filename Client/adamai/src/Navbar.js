@@ -47,8 +47,12 @@ export default function Navbar() {
                     ) : (
                         <CustomLink to="/Login">Create</CustomLink>
                     )}
-                    {!loggedInUser && (
+                    {loggedInUser && (
                         <CustomLink to="/">My Account</CustomLink>
+                    )}
+                    {
+                     loggedInUser && (
+                        <CustomLink to="UploadPdf">Upload PDF</CustomLink>
                     )}
                     {loggedInUser ? (
                         <CustomLink to="/" onClick={handleSignOut}>

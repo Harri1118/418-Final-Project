@@ -58,7 +58,7 @@ const CreateChatbot = () => {
             setError(`Error posting data: ${err.response ? err.response.data : err.message}`);
         }    
     };
-
+    
     return (
         <Box sx={{ maxWidth: '600px', margin: 'auto', mt: 5 }}>
             <Typography variant="h4" component="h1" gutterBottom>
