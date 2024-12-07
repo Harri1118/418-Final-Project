@@ -25,6 +25,7 @@ const template = `
     Language Styles: {{languageStyle}}
     Personality Traits: {{personalityTraits}}
     Key Functions: {{keyFunctions}}
+    Speech Patterns: \n{{speechPatterns}}
     Fallback Behavior: {{fallbackBehavior}}
     Knowledge Level: {{knowledgeLevel}}
     Privacy Needs: {{privacyNeeds}}
@@ -41,15 +42,13 @@ const chain = new LLMChain({
     prompt: prompt
 });
 
-// Function to update config with MongoDB data
 function updateConfigWithMongoData(configData) {
     try {
+        console.log(configData[0].speechPatterns);
         const promptString = mapTemplateToData(template, configData[0]);
-        //console.log(promptString)
-        prompt = PromptTemplate.fromTemplate(promptString); // Update the prompt template with new data
-        //console.log(prompt)
+        console.log(promptString);
+        const prompt = PromptTemplate.fromTemplate(promptString); // Update the prompt template with new data
         chain.prompt = prompt; // Recreate the chain with updated prompt
-        console.log(chain)
     } catch (error) {
         console.error("Error updating config with MongoDB data:", error.message);
     }
@@ -57,7 +56,6 @@ function updateConfigWithMongoData(configData) {
 
 // Mapping template placeholders to actual data from MongoDB object
 function mapTemplateToData(template, data) {
-    //console.log(data)
     return template
         .replace("{{name}}", data.name || "")
         .replace("{{purpose}}", data.purpose || "")
@@ -65,9 +63,25 @@ function mapTemplateToData(template, data) {
         .replace("{{languageStyle}}", data.languageStyles || "")
         .replace("{{personalityTraits}}", data.personalityTraits || "")
         .replace("{{keyFunctions}}", data.keyFunctions || "")
+        .replace("{{speechPatterns}}", convertSpeechPatterns(data.speechPatterns || "{}"))
         .replace("{{fallbackBehavior}}", data.fallbackBehavior || "")
         .replace("{{knowledgeLevel}}", data.knowledgeLevel || "")
-        .replace("{{privacyNeeds}}", data.privacyNeeds || "")
+        .replace("{{privacyNeeds}}", data.privacyNeeds || "");
+}
+
+function convertSpeechPatterns(jsonString) {
+    const speechPatterns = JSON.parse(jsonString).quotes;
+    let result = '\n';
+
+    for (const category in speechPatterns) {
+        result += `${category}:\n\n`;
+        speechPatterns[category].forEach(phrase => {
+            result += `${phrase}\n`;
+        });
+        result += '\n';
+    }
+
+    return result.trim();
 }
 
 // Function to handle user input and generate a response

@@ -12,8 +12,15 @@ const ChatbotSchema = new mongoose.Schema({
   languageStyles: [String],
   personalityTraits: [String],
   keyFunctions: String,
+  speechPatterns: String,
   fallBackBehavior: String,
-  privacyNeeds: String
+  privacyNeeds: String,
+  temperature: String,
+  wordLimit: String,
+  vectorDb : {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "PDF_File"
+  }
 });
 
 const ChatBot = mongoose.model("Chatbot", ChatbotSchema);

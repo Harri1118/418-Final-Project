@@ -2,6 +2,10 @@ const mongoose = require('mongoose');
 
 // Define the schema
 const pdfSchema = new mongoose.Schema({
+  owner:{
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: "User"
+  },
   title: {
     type: String,
     required: true

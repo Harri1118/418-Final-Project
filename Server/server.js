@@ -1,3 +1,6 @@
+// npm install express, mongodb
+// npm install cors mongoose dotenv multer pdf-lib
+// npm install @langchain/openai body-parser express node
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
@@ -7,6 +10,7 @@ const { PDFDocument } = require('pdf-lib');
 const fs = require('fs');
 const path = require('path');
 const upload = multer({ dest: 'uploads/' });
+const bodyParser = require('body-parser');
 
 const { handleUserInput, updateConfigWithMongoData } = require('./chatbot');
 
@@ -15,12 +19,14 @@ const Chatbot = require('./schemas/baseSchemas/ChatBot');
 const Subscription = require('./schemas/simpleSchemas/Subscription')
 const Pdf = require('./schemas/baseSchemas/PDF_File')
 const PublicFile = require('./schemas/simpleSchemas/publicFile')
-
+const FavoritedFiles = require('./schemas/simpleSchemas/FavoritedFiles')
 dotenv.config();
 
 const app = express();
 app.use(express.json());
 app.use(cors());
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 
 const mongoString = process.env.MONGO_URI;
 mongoose.connect(mongoString, {
@@ -103,7 +109,8 @@ app.get('/getUsers', async (req, res) => {
 app.post('/CreateChatbot', async (req, res) => {
     try {
         const owner = await User.findOne({username: req.body.owner});
-        //console.log(owner)
+        const vectorDb = await Pdf.findOne({_id : req.body.vectorDb})
+        console.log(vectorDb)
         const chatbot = new Chatbot({
             owner: owner,
             name: req.body.name,
@@ -113,8 +120,12 @@ app.post('/CreateChatbot', async (req, res) => {
             languageStyles: req.body.languageStyles,
             personalityTraits: req.body.personalityTraits,
             keyFunctions: req.body.keyFunctions,
+            speechPatterns: req.body.speechPatterns,
             fallBackBehavior: req.body.fallBackBehavior,
-            privacyNeeds: req.body.privacyNeeds
+            privacyNeeds: req.body.privacyNeeds,
+            temperature: req.body.temperature,
+            wordLimit: req.body.wordLimit,
+            vectorDb : vectorDb
         });
         await chatbot.save();
         res.status(200).send("Success! Added chatbot!");
@@ -179,7 +190,7 @@ app.get('/getSubscriptions', async (req, res) => {
 app.post('/createPDF', upload.single('file'), async (req, res) => {
     try {
         const { user, name, description, isPublic } = req.body;
-        let Owner = User.findOne({username: user})
+        const Owner = await User.findOne({username: req.body.user})
         const file = req.file;
 
         if (!file) {
@@ -211,6 +222,7 @@ app.post('/createPDF', upload.single('file'), async (req, res) => {
 
         // Create the PDF file schema entry
         const newPdf = new Pdf({
+            owner: Owner,
             title: name,
             description: description,
             pdfFile: {
@@ -239,6 +251,33 @@ app.post('/createPDF', upload.single('file'), async (req, res) => {
     }
 });
 
+app.get('/getFileOptionsByUser', async (req, res) => {
+    try {
+      // Find the user account
+      const userAccount = await User.findOne({ username: req.query.loggedInUser });
+      console.log(userAccount);
+      if (!userAccount) {
+        return res.status(404).send('User not found');
+      }
+  
+      // Find all PDF files associated with the user
+      const userPDFs = await Pdf.find({ owner: userAccount._id });
+  
+      // Find all favorited files associated with the user's ID
+      const favoritedFiles = await FavoritedFiles.find({ user: userAccount._id }).populate('file');
+  
+      // Extract the actual PDF files from the favorited files
+      const favoritedPDFs = favoritedFiles.map(fav => fav.file.PDF_File);
+  
+      // Combine both arrays
+      const finFiles = [...userPDFs, ...favoritedPDFs];
+  
+      // Send the combined list of files as the response
+      res.status(200).json(finFiles);
+    } catch (error) {
+      res.status(500).send(error);
+    }
+  });
 // Dev methods
 
 // app.post('/postComponents', async (req, res) => {
