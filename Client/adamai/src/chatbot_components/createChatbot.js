@@ -28,7 +28,6 @@ const CreateChatbot = () => {
     const [knowledge, setKnowledge] = useState('');
     const [selectedLanguageStyles, setSelectedLanguageStyles] = useState([]);
     const [keyFunctionalities, setKeyFunctionalities] = useState('');
-    const [customResponse, setCustomResponse] = useState('');
     // In place for customResponse field.
     const [selectedPatterns, setSelectedPatterns] = useState([]);
     const [quotes, setQuotes] = useState(quotesTemplate);
@@ -93,7 +92,6 @@ const CreateChatbot = () => {
             setFallBackBehavior('')
             setPrivacyNeeds('')
             setAudience('')
-            setCustomResponse('')
             setFile([])
             setSuccess("Success! " + botName + " has been created!")
         } catch (err) {

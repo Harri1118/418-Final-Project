@@ -12,13 +12,6 @@ import ChatBox from './chatbot_components/chatBox';
 import Project from './db_components/Project';
 import User from './db_components/User';
 
-// Install dependencies
-// npm install react-scripts
-// npm install @mui/material
-// npm install axios
-// npm install @mui/styled-engine
-// npm install @emotion/styled @emotion/react
-
 function App() {
   return (
     <>

@@ -1,7 +1,3 @@
-// Install dependencies
-// npm install @langchain/openai dotenv openai
-// npm install body-parser
-// npm install express
 const dotenv = require('dotenv');
 dotenv.config(); // Load environment variables first
 
@@ -9,6 +5,7 @@ const { ChatOpenAI } = require('@langchain/openai');
 const { PromptTemplate } = require('@langchain/core/prompts');
 const { LLMChain } = require('langchain/chains');
 
+const {stageFile} = require('./convertPdf')
 
 const chatBot = new ChatOpenAI({
     model: "gpt-4",
@@ -30,7 +27,7 @@ const template = `
     Knowledge Level: {{knowledgeLevel}}
     Privacy Needs: {{privacyNeeds}}
     
-    Now, answer the following question:
+    Now, answer the following question with the following world limit at {{wordLimit}}:
     {question}
 `;
 
@@ -44,9 +41,14 @@ const chain = new LLMChain({
 
 function updateConfigWithMongoData(configData) {
     try {
-        console.log(configData[0].speechPatterns);
+        let config = configData[0]
+        //console.log(config)
+        if(config.vectorDb){
+            stageFile(config.vectorDb)
+        }
+        chatBot.temperature = config.temperature
+        chain.llm = chatBot
         const promptString = mapTemplateToData(template, configData[0]);
-        console.log(promptString);
         const prompt = PromptTemplate.fromTemplate(promptString); // Update the prompt template with new data
         chain.prompt = prompt; // Recreate the chain with updated prompt
     } catch (error) {
@@ -66,7 +68,8 @@ function mapTemplateToData(template, data) {
         .replace("{{speechPatterns}}", convertSpeechPatterns(data.speechPatterns || "{}"))
         .replace("{{fallbackBehavior}}", data.fallbackBehavior || "")
         .replace("{{knowledgeLevel}}", data.knowledgeLevel || "")
-        .replace("{{privacyNeeds}}", data.privacyNeeds || "");
+        .replace("{{privacyNeeds}}", data.privacyNeeds || "")
+        .replace("{{wordLimit}}", data.wordLimit || "");
 }
 
 function convertSpeechPatterns(jsonString) {

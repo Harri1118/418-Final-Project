@@ -1,6 +1,3 @@
-// npm install express, mongodb
-// npm install cors mongoose dotenv multer pdf-lib
-// npm install @langchain/openai body-parser express node
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
@@ -110,7 +107,6 @@ app.post('/CreateChatbot', async (req, res) => {
     try {
         const owner = await User.findOne({username: req.body.owner});
         const vectorDb = await Pdf.findOne({_id : req.body.vectorDb})
-        console.log(vectorDb)
         const chatbot = new Chatbot({
             owner: owner,
             name: req.body.name,
@@ -127,6 +123,7 @@ app.post('/CreateChatbot', async (req, res) => {
             wordLimit: req.body.wordLimit,
             vectorDb : vectorDb
         });
+        console.log(chatbot)
         await chatbot.save();
         res.status(200).send("Success! Added chatbot!");
     } catch (error) {
