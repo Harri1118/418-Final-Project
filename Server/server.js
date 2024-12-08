@@ -166,7 +166,7 @@ app.post('/sendMessage', async (req, res) => {
     const userInput = req.body.input;
     try {
         const response = await handleUserInput(userInput);
-        res.json({ response: response.text });
+        res.json({ response: response });
     } catch (error) {
         res.status(500).json({ error: 'Error generating response' });
     }
