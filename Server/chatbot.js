@@ -33,6 +33,8 @@ const template = `
 
 let prompt = PromptTemplate.fromTemplate(template);
 
+const DB_VECTORSTORE_PATH = 'vectorstore/dbtest.txt';
+
 // Create the LLMChain with the initial prompt
 const chain = new LLMChain({
     llm: chatBot,
