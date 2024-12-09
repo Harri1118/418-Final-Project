@@ -9,7 +9,7 @@ const path = require('path');
 const upload = multer({ dest: 'uploads/' });
 const bodyParser = require('body-parser');
 
-const { handleUserInput, updateConfigWithMongoData } = require('./chatbot');
+const { handleUserInput, updateConfigWithMongoData, updateConfigWithChatHistory } = require('./chatbot');
 
 const User = require('./schemas/baseSchemas/User');
 const Chatbot = require('./schemas/baseSchemas/ChatBot');
@@ -17,6 +17,8 @@ const Subscription = require('./schemas/simpleSchemas/Subscription')
 const Pdf = require('./schemas/baseSchemas/PDF_File')
 const PublicFile = require('./schemas/simpleSchemas/publicFile')
 const FavoritedFiles = require('./schemas/simpleSchemas/FavoritedFiles')
+const ChatLog = require('./schemas/baseSchemas/ChatLog')
+
 dotenv.config();
 
 const app = express();
@@ -166,7 +168,7 @@ app.post('/sendMessage', async (req, res) => {
     const userInput = req.body.input;
     try {
         const response = await handleUserInput(userInput);
-        res.json({ response: response.text });
+        res.json({ response: response });
     } catch (error) {
         res.status(500).json({ error: 'Error generating response' });
     }
@@ -275,30 +277,81 @@ app.get('/getFileOptionsByUser', async (req, res) => {
       res.status(500).send(error);
     }
   });
-// Dev methods
 
-// app.post('/postComponents', async (req, res) => {
-//     console.log(req);
-//     try{
-//         if(req.body.KnowledgeLevel){
-//             let knowledgeLevel = new KnowledgeLevel({level : req.body.KnowledgeLevel})
-//             knowledgeLevel.save();
-//         }
-//         if(req.body.LanguageStyle){
-//             let languageStyle = new LanguageStyle({style : req.body.LanguageStyle})
-//             languageStyle.save();
-//         }
-//         if(req.body.PersonalityTrait){
-//             let personalityTrait = new PersonalityTrait({trait : req.body.PersonalityTrait})
-//             personalityTrait.save();
-//         }
-//         if(req.body.Subscription){
-//             let subscription = new Subscription({name : req.body.Subscription, price : req.body.price})
-//             subscription.save();
-//         }
-//         return res.status(200).send("Ok");
-//     }
-//     catch(error){
-//         res.status(500).send(error)
-//     }
-// })
+  app.post('/setSelectedChatLogToChatBot', async (req, res) => {
+    const{chatLogId} = req.body
+    const chatLog = await ChatLog.findOne({_id : chatLogId})
+    updateConfigWithChatHistory(chatLog.messages)
+  })
+  // Chat log methods
+  app.post('/saveChatLog', async (req, res) => {
+    try{
+        const {userName, chatBotId, log} = req.body;
+        const usr = await User.findOne({username : userName})
+        if(!usr){
+            res.status(500).send("User not found!")
+        }
+        
+        const chatbot = await Chatbot.findOne({_id : chatBotId})
+        if(!chatbot){
+            res.status(500).send("Chatbot not found!")
+        }
+        const logString = JSON.stringify(log)
+        const chatLog = new ChatLog({user : usr, chatBot: chatbot, messages: logString})
+        console.log(chatLog)
+        await chatLog.save()
+        return res.status(200).send("Success! Chat log created!")
+    } catch(error){
+        res.status(500).send(error)
+    }
+  });
+
+  app.get('/getChatLogsBySession', async (req, res) => {
+    try {
+        const { userName, chatBotId } = req.query;
+        //console.log(userName, chatBotId)
+        const usr = await User.findOne({ username: userName });
+        if (!usr) {
+            return res.status(500).send("User not found!");
+        }
+        //console.log(usr)
+        const chatbot = await Chatbot.findOne({ _id: chatBotId });
+        if (!chatbot) {
+            return res.status(500).send("Chatbot not found!");
+        }
+        //console.log(chatbot)
+        const logs = await ChatLog.find({ user: usr, chatBot: chatbot });
+        //console.log(logs)
+        return res.status(200).json(logs);
+    } catch (error) {
+        res.status(500).send(error);
+    }
+});
+
+  //endpoints for pdf viewing
+  app.get('/getPublicPdfs', async (req, res) => {
+    try {
+        const publicFiles = await PublicFile.find().populate('PDF_File');
+        const pdfs = publicFiles.map((file) => ({
+            _id: file.PDF_File._id,
+            title: file.PDF_File.title,
+            description: file.PDF_File.description,
+        }));
+        res.status(200).json(pdfs);
+    } catch (error) {
+        res.status(500).json({ error: 'Error fetching public PDFs' });
+    }
+});
+
+app.get('/getPdf/:id', async (req, res) => {
+    try {
+        const pdf = await Pdf.findById(req.params.id);
+        if (!pdf) {
+            return res.status(404).send('PDF not found');
+        }
+        res.contentType('application/pdf');
+        res.send(pdf.pdfFile.data);
+    } catch (error) {
+        res.status(500).send(error);
+    }
+});

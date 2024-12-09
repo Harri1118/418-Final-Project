@@ -2,19 +2,24 @@ const dotenv = require('dotenv');
 dotenv.config(); // Load environment variables first
 
 const { ChatOpenAI } = require('@langchain/openai');
-const { PromptTemplate } = require('@langchain/core/prompts');
-const { LLMChain } = require('langchain/chains');
+const { ChatPromptTemplate } = require('@langchain/core/prompts');
+const {MemoryVectorStore} = require('langchain/vectorstores/memory')
+const {createRetrievalChain} = require('langchain/chains/retrieval')
+const {RecursiveCharacterTextSplitter} = require('langchain/text_splitter')
+const { PDFLoader } = require("@langchain/community/document_loaders/fs/pdf");
+const {OpenAIEmbeddings} = require('@langchain/openai')
 
 const {stageFile} = require('./convertPdf')
 
-const chatBot = new ChatOpenAI({
-    model: "gpt-4",
-    temperature: 0,
+const PDF_PATH = 'temp/vectorDb.pdf';
+
+let model = new ChatOpenAI({
+    modelName: "gpt-4",
     openAIApiKey: process.env.OPENAI_API_KEY,
 });
 
 // Define the template with placeholders
-const template = `
+const templateNoContext = `
     You are a chatbot with the following configuration:
     Name: {{name}}
     Purpose: {{purpose}}
@@ -22,42 +27,104 @@ const template = `
     Language Styles: {{languageStyle}}
     Personality Traits: {{personalityTraits}}
     Key Functions: {{keyFunctions}}
-    Speech Patterns: \n{{speechPatterns}}
+    Speech Patterns: \n{{speechPatterns}}\n
     Fallback Behavior: {{fallbackBehavior}}
     Knowledge Level: {{knowledgeLevel}}
     Privacy Needs: {{privacyNeeds}}
     
     Now, answer the following question with the following world limit at {{wordLimit}}:
-    {question}
+    {input}
 `;
 
-let prompt = PromptTemplate.fromTemplate(template);
+// Define the template with placeholders
+const templateWithContext = `
+    You are a chatbot with the following configuration:
+    Name: {{name}}
+    Purpose: {{purpose}}
+    Audience: {{audience}}
+    Language Styles: {{languageStyle}}
+    Personality Traits: {{personalityTraits}}
+    Key Functions: {{keyFunctions}}
+    Speech Patterns: \n{{speechPatterns}}\n
+    Fallback Behavior: {{fallbackBehavior}}
+    Knowledge Level: {{knowledgeLevel}}
+    Privacy Needs: {{privacyNeeds}}
 
-const DB_VECTORSTORE_PATH = 'vectorstore/dbtest.txt';
+    Now, answer the following question with the following world limit at {{wordLimit}}:
+    {input}
 
+    In order to research the information necesarry, please utilize this context:
+    {context}
+`;
+
+const addChatLogContextTemplate = `
+    Alongside this context, you've had this previous conversation with the user:
+    {chatLog}
+    Please make sure to act within all these parameters.
+`;
 // Create the LLMChain with the initial prompt
-const chain = new LLMChain({
-    llm: chatBot,
-    prompt: prompt
-});
+let chain = null;
+let retrievalChain = null;
+let chatLog = null;
 
-function updateConfigWithMongoData(configData) {
+async function updateConfigWithMongoData(configData) {
     try {
+        chain = null;
+        retrievalChain = null;
         let config = configData[0]
         //console.log(config)
+        model.temperature = Number(config.temperature)
         if(config.vectorDb){
+            let promptString = mapTemplateToData(templateWithContext, config)
+            if(chatLog){
+                promptString += chatLog
+            }
+            chatLog = null
+            let prompt = ChatPromptTemplate.fromTemplate(promptString)
+            chain = prompt.pipe(model)
             stageFile(config.vectorDb)
+            const loader = new PDFLoader(PDF_PATH);
+            const docs = await loader.load()
+            const splitter = new RecursiveCharacterTextSplitter({
+                chunkSize: 200,
+                chunkOverlap: 20,
+            })
+            const splitDocs = await splitter.splitDocuments(docs)
+            console.log(splitDocs)
+            const embeddings = new OpenAIEmbeddings();
+            const vectorStore = await MemoryVectorStore.fromDocuments(
+                splitDocs,
+                embeddings
+            )
+            const retriever = vectorStore.asRetriever({
+                k : 3
+            });
+            retrievalChain = await createRetrievalChain({
+                combineDocsChain: chain,
+                retriever
+            });
         }
-        chatBot.temperature = config.temperature
-        chain.llm = chatBot
-        const promptString = mapTemplateToData(template, configData[0]);
-        const prompt = PromptTemplate.fromTemplate(promptString); // Update the prompt template with new data
-        chain.prompt = prompt; // Recreate the chain with updated prompt
+        else{
+            let promptString = mapTemplateToData(templateNoContext, config);
+            if(chatLog){
+                promptString += chatLog
+            }
+            chatLog = null
+            let prompt = ChatPromptTemplate.fromTemplate(promptString); // Update the prompt template with new data
+            console.log(promptString)
+            chain = prompt.pipe(model)
+        }
     } catch (error) {
         console.error("Error updating config with MongoDB data:", error.message);
     }
 }
 
+function updateConfigWithChatHistory(chatLog){
+    const logs = JSON.parse(chatLog)
+    let promptString = addChatLogContextTemplate
+    let chatLogString = logs.map(entry => `${entry.sender}: ${entry.text}`).join('\n');
+    chatLog = promptString.replace("{chatLog}", chatLogString || "")
+}
 // Mapping template placeholders to actual data from MongoDB object
 function mapTemplateToData(template, data) {
     return template
@@ -68,7 +135,7 @@ function mapTemplateToData(template, data) {
         .replace("{{personalityTraits}}", data.personalityTraits || "")
         .replace("{{keyFunctions}}", data.keyFunctions || "")
         .replace("{{speechPatterns}}", convertSpeechPatterns(data.speechPatterns || "{}"))
-        .replace("{{fallbackBehavior}}", data.fallbackBehavior || "")
+        .replace("{{fallbackBehavior}}", data.fallBackBehavior || "")
         .replace("{{knowledgeLevel}}", data.knowledgeLevel || "")
         .replace("{{privacyNeeds}}", data.privacyNeeds || "")
         .replace("{{wordLimit}}", data.wordLimit || "");
@@ -97,13 +164,23 @@ async function handleUserInput(userInput) {
     } else {
         try {
             // Pass the user input as a question
-            console.log(chain)
-            if(typeof userInput == "string")
-                console.log("it's a string.");
-            const response = await chain.invoke({ question : userInput });
-            console.log(response)
-            console.log("Response:", response.text);
-            return response;
+            //console.log(chain)
+            let response = null
+            if(!retrievalChain){
+                response = await chain.invoke({ 
+                    input : userInput 
+                });
+                console.log(response)
+                console.log("Response:", response.text);
+                return response.text;
+            }
+            else{
+                response = await retrievalChain.invoke({
+                    input: userInput
+                })
+                console.log(response.answer.content)
+                return response.answer.content
+            }
         } catch (error) {
             console.error("Error generating response:", error.message);
             throw new Error("Failed to generate a response");
@@ -112,4 +189,4 @@ async function handleUserInput(userInput) {
 }
 
 
-module.exports = { handleUserInput, updateConfigWithMongoData };
+module.exports = { handleUserInput, updateConfigWithMongoData, updateConfigWithChatHistory };
