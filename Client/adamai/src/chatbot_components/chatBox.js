@@ -68,6 +68,14 @@ const HomeButton = styled(Button)`
   }
 `;
 
+const EditBot = styled(Button)`
+  background-color: #1976d2;
+  color: white;
+  &:hover {
+    background-color: #1565c0;
+  }
+`;
+
 const SelectChatLogButton = styled(Button)`
   background-color: #1976d2;
   color: white;
@@ -239,6 +247,9 @@ const Chatbox = () => {
           >
             Select Chat History
           </SelectChatLogButton>
+          <EditBot onClick={() => navigate(`/project/editProject/${projId}`)} variant="contained">
+            Edit Chatbot
+          </EditBot>
           <HomeButton onClick={() => navigate('/')} variant="contained">
             Home
           </HomeButton>

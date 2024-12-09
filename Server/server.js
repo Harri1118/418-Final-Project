@@ -4,8 +4,6 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const multer = require('multer');
 const { PDFDocument } = require('pdf-lib');
-const fs = require('fs');
-const path = require('path');
 const upload = multer({ dest: 'uploads/' });
 const bodyParser = require('body-parser');
 
@@ -133,6 +131,36 @@ app.post('/CreateChatbot', async (req, res) => {
     }
 });
 
+app.get('getChatBot', async (req, res) => {
+    try{
+        const {chatBotId} = req.body;
+        const chatbot = await Chatbot.findOne({_id : chatBotId})
+        return res.status(200).json(chatbot)
+    } catch(error){
+        return res.status(500).json({error: "Error retrieving chatbot."})
+    }
+})
+
+app.post('/editChatBot', async (req, res) => {
+    const{
+        projId,
+        userId,
+        name,
+        purpose,
+        audience,
+        knowledgeLevel,
+        languageStyles,
+        personalityTraits,
+        keyFunctions,
+        speechPatterns,
+        fallBackBehavior,
+        privacyNeeds,
+        temperature,
+        wordLimit,
+        vectorDb
+    } = req.body
+})
+
 app.post('/getProjects', async (req, res) => {
     try {
       const user = await User.findOne({ username: req.body.loggedInUser });
@@ -189,7 +217,7 @@ app.get('/getSubscriptions', async (req, res) => {
 app.post('/createPDF', upload.single('file'), async (req, res) => {
     try {
         const { user, name, description, isPublic } = req.body;
-        const Owner = await User.findOne({username: req.body.user})
+        const Owner = await User.findOne({ username: req.body.user });
         const file = req.file;
 
         if (!file) {
@@ -202,22 +230,15 @@ app.post('/createPDF', upload.single('file'), async (req, res) => {
             return res.status(400).json({ error: 'PDF already exists in the public schema' });
         }
 
-        // Read the uploaded PDF file
-        const filePath = path.join(__dirname, file.path);
-        const pdfBytes = fs.readFileSync(filePath);
-        const pdfDoc = await PDFDocument.load(pdfBytes);
+        // Load the uploaded PDF file from memory
+        const pdfDoc = await PDFDocument.load(file.buffer);
 
         // Add metadata to the PDF
         pdfDoc.setTitle(name);
         pdfDoc.setSubject(description);
 
-        // Save the modified PDF
+        // Save the modified PDF to a buffer
         const modifiedPdfBytes = await pdfDoc.save();
-        const modifiedFilePath = path.join(__dirname, 'uploads', `${name}.pdf`);
-        fs.writeFileSync(modifiedFilePath, modifiedPdfBytes);
-
-        // Convert Uint8Array to Buffer
-        const pdfBuffer = Buffer.from(modifiedPdfBytes);
 
         // Create the PDF file schema entry
         const newPdf = new Pdf({
@@ -225,7 +246,7 @@ app.post('/createPDF', upload.single('file'), async (req, res) => {
             title: name,
             description: description,
             pdfFile: {
-                data: pdfBuffer,
+                data: modifiedPdfBytes,
                 contentType: 'application/pdf'
             }
         });
@@ -239,9 +260,6 @@ app.post('/createPDF', upload.single('file'), async (req, res) => {
             });
             await newPublicFile.save();
         }
-
-        // Clean up the uploaded file
-        fs.unlinkSync(filePath);
 
         res.status(200).send('Success! PDF has been created!');
     } catch (error) {

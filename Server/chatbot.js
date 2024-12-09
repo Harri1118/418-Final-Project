@@ -164,8 +164,6 @@ async function handleUserInput(userInput) {
         return { content: "Placeholder response." };
     } else {
         try {
-            // Pass the user input as a question
-            //console.log(chain)
             let response = null
             if(!retrievalChain){
                 response = await chain.invoke({ 

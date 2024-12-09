@@ -12,6 +12,7 @@ import ChatBox from './chatbot_components/chatBox';
 import Project from './db_components/Project';
 import User from './db_components/User';
 import ViewPdfs from "./pdf_components/viewPdfs";
+import EditProject from "./editComponents/editProject"
 
 function App() {
   return (
@@ -32,6 +33,7 @@ function App() {
         <Route path="/CreateChatbot" element={<CreateChatbot/>}/>
         <Route path="/Dashboard" element={<Dashboard/>}/>
         <Route path="/project/:projId" element={<Project/>}/>
+        <Route path="/project/editProject/:projId" element={<EditProject/>}/>
         <Route path="/chatbot/:projId" element={<ChatBox/>}/>
         <Route path="/viewPdfs" element={<ViewPdfs/>}/>
         
