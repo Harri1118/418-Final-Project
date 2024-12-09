@@ -317,3 +317,31 @@ app.get('/getFileOptionsByUser', async (req, res) => {
         res.status(500).send(error)
     }
   })
+
+  //endpoints for pdf viewing
+  app.get('/getPublicPdfs', async (req, res) => {
+    try {
+        const publicFiles = await PublicFile.find().populate('PDF_File');
+        const pdfs = publicFiles.map((file) => ({
+            _id: file.PDF_File._id,
+            title: file.PDF_File.title,
+            description: file.PDF_File.description,
+        }));
+        res.status(200).json(pdfs);
+    } catch (error) {
+        res.status(500).json({ error: 'Error fetching public PDFs' });
+    }
+});
+
+app.get('/getPdf/:id', async (req, res) => {
+    try {
+        const pdf = await Pdf.findById(req.params.id);
+        if (!pdf) {
+            return res.status(404).send('PDF not found');
+        }
+        res.contentType('application/pdf');
+        res.send(pdf.pdfFile.data);
+    } catch (error) {
+        res.status(500).send(error);
+    }
+});
