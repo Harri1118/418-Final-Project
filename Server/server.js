@@ -17,6 +17,8 @@ const Subscription = require('./schemas/simpleSchemas/Subscription')
 const Pdf = require('./schemas/baseSchemas/PDF_File')
 const PublicFile = require('./schemas/simpleSchemas/publicFile')
 const FavoritedFiles = require('./schemas/simpleSchemas/FavoritedFiles')
+const ChatLog = require('./schemas/baseSchemas/ChatLog')
+
 dotenv.config();
 
 const app = express();
@@ -275,30 +277,43 @@ app.get('/getFileOptionsByUser', async (req, res) => {
       res.status(500).send(error);
     }
   });
-// Dev methods
 
-// app.post('/postComponents', async (req, res) => {
-//     console.log(req);
-//     try{
-//         if(req.body.KnowledgeLevel){
-//             let knowledgeLevel = new KnowledgeLevel({level : req.body.KnowledgeLevel})
-//             knowledgeLevel.save();
-//         }
-//         if(req.body.LanguageStyle){
-//             let languageStyle = new LanguageStyle({style : req.body.LanguageStyle})
-//             languageStyle.save();
-//         }
-//         if(req.body.PersonalityTrait){
-//             let personalityTrait = new PersonalityTrait({trait : req.body.PersonalityTrait})
-//             personalityTrait.save();
-//         }
-//         if(req.body.Subscription){
-//             let subscription = new Subscription({name : req.body.Subscription, price : req.body.price})
-//             subscription.save();
-//         }
-//         return res.status(200).send("Ok");
-//     }
-//     catch(error){
-//         res.status(500).send(error)
-//     }
-// })
+
+  // Chat log methods
+  app.post('/saveChatLog', async (req, res) => {
+    try{
+        const {userName, chatBotId, log} = req.body;
+        const usr = await User.findOne({username : userName})
+        if(!usr){
+            res.status(500).send("User not found!")
+        }
+        const chatbot = await Chatbot.findOne({_id : chatBotId})
+        if(!chatbot){
+            res.status(500).send("Chatbot not found!")
+        }
+        const chatLog = new ChatLog({user : usr, chatBot: chatbot, messages: log})
+        console.log(chatLog)
+        await chatLog.save()
+        return res.status(200).send("Success! Chat log created!")
+    } catch(error){
+        res.status(500).send(error)
+    }
+  });
+
+  app.get('/getChatLogsBySession', async (req, res) => {
+    try{
+        const{userName, chatBotId} = req.body
+        const usr = await User.findOne({username : userName})
+        if(!usr){
+            res.status(500).send("User not found!")
+        }
+        const chatbot = await Chatbot.findOne({_id : chatBotId})
+        if(!chatbot){
+            res.status(500).send("Chatbot not found!")
+        }
+        const logs = ChatLog.find({user: usr, chatBot: chatbot})
+        return res.status(200).json(logs)
+    } catch(error){
+        res.status(500).send(error)
+    }
+  })

@@ -7,7 +7,6 @@ const Pdf = require('./schemas/baseSchemas/PDF_File');
 
 async function stageFile(id) {
     let file = await Pdf.findOne({ _id: id._id });
-
     if (!file) {
         console.log('File not found');
         return;
@@ -22,7 +21,5 @@ async function stageFile(id) {
         console.log('Configured temp/vectorDb.pdf to the new file.');
     }
 }
-
-
 
 module.exports = { stageFile };

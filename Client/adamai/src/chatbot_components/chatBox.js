@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Box, TextField, Button, Typography, CircularProgress, Paper } from '@mui/material';
+import { Box, TextField, Button, Typography, CircularProgress, Paper, Select, MenuItem } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import axios from "axios";
 import ReactMarkdown from 'react-markdown';
@@ -68,7 +68,27 @@ const HomeButton = styled(Button)`
   }
 `;
 
+const SelectChatLogButton = styled(Button)`
+  background-color: #1976d2;
+  color: white;
+  &:hover {
+    background-color: #1565c0;
+  }
+`;
+
+const SaveChatLogButton = styled(Button)`
+  background-color: #1976d2;
+  color: white;
+  &:hover {
+    background-color: #1565c0;
+  }
+`;
+
 const Chatbox = () => {
+  // Load chat histories associated with the user
+  const [selectedChatHistory, setSelectedChatHistory] = useState('');
+  const [chatHistories, setChatHistories] = useState([]);
+  // Rest of the variables associated with chatbot functionality.
   const [chatLog, setChatLog] = useState([]);
   const [userInput, setUserInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -80,6 +100,21 @@ const Chatbox = () => {
     if (loggedInUser && projId) {
       axios
         .post('http://localhost:9000/configureChatbot', { projId })
+        .then((response) => {
+          console.log(response);
+        })
+        .catch((error) => {
+          console.error('Error configuring chatbot:', error);
+        });
+    }
+  }, [loggedInUser, projId]);
+
+  useEffect(() => {
+    if (loggedInUser && projId) {
+      axios
+        .get('http://localhost:9000/getChatLogsBySession', { 
+          userName: loggedInUser,
+          chatBotId: projId })
         .then((response) => {
           console.log(response);
         })
@@ -120,17 +155,69 @@ const Chatbox = () => {
     }
   };
 
+  const handleChatHistoryChange = (event) => {
+    setSelectedChatHistory(event.target.value);
+    const selectedLog = chatHistories.find(log => log.id === event.target.value);
+    setChatLog(selectedLog ? selectedLog.messages : []);
+  };
+
+  const handleSelectChatHistory = () => {
+    // Logic to handle chat log selection
+    console.log("Selected Chat Log:", selectedChatHistory);
+  };
+
+  const handleSaveChatHistory = async (event) => {
+    event.preventDefault();
+    console.log("Saving Chat Log:", chatLog);
+
+    try {
+        const response = await axios.post('/saveChatLog', {
+            userName: loggedInUser,
+            chatBotId: projId,
+            log: chatLog
+        });
+        console.log('Response:', response);
+    } catch (error) {
+        console.error('Error saving chat log:', error);
+    }
+};
+
   return (
     <ChatContainer>
-      <ChatHeader>
+            <ChatHeader>
         <Typography variant="h4" style={{ fontWeight: 'bold', color: '#1976d2' }}>
           Chatbox
         </Typography>
-        <HomeButton onClick={() => navigate('/')} variant="contained">
-          Home
-        </HomeButton>
+        <Box>
+        <SaveChatLogButton
+            onClick={handleSaveChatHistory}
+            variant="contained"
+          >
+            Save Recorded Chat Log
+          </SaveChatLogButton>
+          <Select
+            value={selectedChatHistory}
+            onChange={handleChatHistoryChange}
+            displayEmpty
+            style={{ marginRight: 10 }}
+          >
+            <MenuItem value="" disabled>Select Chat Log</MenuItem>
+            {chatHistories.map((log) => (
+              <MenuItem key={log.id} value={log.id}>{log.name}</MenuItem>
+            ))}
+          </Select>
+          <SelectChatLogButton
+            onClick={handleSelectChatHistory}
+            variant="contained"
+            disabled={!selectedChatHistory}
+          >
+            Select Chat Log
+          </SelectChatLogButton>
+          <HomeButton onClick={() => navigate('/')} variant="contained">
+            Home
+          </HomeButton>
+        </Box>
       </ChatHeader>
-
       <ChatDisplay>
         {chatLog.map((msg, index) => (
           <ChatBubble key={index} sender={msg.sender}>
