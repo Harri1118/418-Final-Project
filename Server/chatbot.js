@@ -1,7 +1,3 @@
-// Install dependencies
-// npm install @langchain/openai dotenv openai
-// npm install body-parser
-// npm install express
 const dotenv = require('dotenv');
 dotenv.config(); // Load environment variables first
 
@@ -9,6 +5,7 @@ const { ChatOpenAI } = require('@langchain/openai');
 const { PromptTemplate } = require('@langchain/core/prompts');
 const { LLMChain } = require('langchain/chains');
 
+const {stageFile} = require('./convertPdf')
 
 const chatBot = new ChatOpenAI({
     model: "gpt-4",
@@ -25,15 +22,18 @@ const template = `
     Language Styles: {{languageStyle}}
     Personality Traits: {{personalityTraits}}
     Key Functions: {{keyFunctions}}
+    Speech Patterns: \n{{speechPatterns}}
     Fallback Behavior: {{fallbackBehavior}}
     Knowledge Level: {{knowledgeLevel}}
     Privacy Needs: {{privacyNeeds}}
     
-    Now, answer the following question:
+    Now, answer the following question with the following world limit at {{wordLimit}}:
     {question}
 `;
 
 let prompt = PromptTemplate.fromTemplate(template);
+
+const DB_VECTORSTORE_PATH = 'vectorstore/dbtest.txt';
 
 // Create the LLMChain with the initial prompt
 const chain = new LLMChain({
@@ -41,15 +41,18 @@ const chain = new LLMChain({
     prompt: prompt
 });
 
-// Function to update config with MongoDB data
 function updateConfigWithMongoData(configData) {
     try {
+        let config = configData[0]
+        //console.log(config)
+        if(config.vectorDb){
+            stageFile(config.vectorDb)
+        }
+        chatBot.temperature = config.temperature
+        chain.llm = chatBot
         const promptString = mapTemplateToData(template, configData[0]);
-        //console.log(promptString)
-        prompt = PromptTemplate.fromTemplate(promptString); // Update the prompt template with new data
-        //console.log(prompt)
+        const prompt = PromptTemplate.fromTemplate(promptString); // Update the prompt template with new data
         chain.prompt = prompt; // Recreate the chain with updated prompt
-        console.log(chain)
     } catch (error) {
         console.error("Error updating config with MongoDB data:", error.message);
     }
@@ -57,7 +60,6 @@ function updateConfigWithMongoData(configData) {
 
 // Mapping template placeholders to actual data from MongoDB object
 function mapTemplateToData(template, data) {
-    //console.log(data)
     return template
         .replace("{{name}}", data.name || "")
         .replace("{{purpose}}", data.purpose || "")
@@ -65,9 +67,26 @@ function mapTemplateToData(template, data) {
         .replace("{{languageStyle}}", data.languageStyles || "")
         .replace("{{personalityTraits}}", data.personalityTraits || "")
         .replace("{{keyFunctions}}", data.keyFunctions || "")
+        .replace("{{speechPatterns}}", convertSpeechPatterns(data.speechPatterns || "{}"))
         .replace("{{fallbackBehavior}}", data.fallbackBehavior || "")
         .replace("{{knowledgeLevel}}", data.knowledgeLevel || "")
         .replace("{{privacyNeeds}}", data.privacyNeeds || "")
+        .replace("{{wordLimit}}", data.wordLimit || "");
+}
+
+function convertSpeechPatterns(jsonString) {
+    const speechPatterns = JSON.parse(jsonString).quotes;
+    let result = '\n';
+
+    for (const category in speechPatterns) {
+        result += `${category}:\n\n`;
+        speechPatterns[category].forEach(phrase => {
+            result += `${phrase}\n`;
+        });
+        result += '\n';
+    }
+
+    return result.trim();
 }
 
 // Function to handle user input and generate a response

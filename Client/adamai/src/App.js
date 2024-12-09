@@ -6,17 +6,11 @@ import Login from './login_components/Login';
 import Signup from './login_components/Signup';
 import Subscribe from './chatbot_components/subscribe';
 import CreateChatbot from './chatbot_components/createChatbot';
+import UploadPDF from './pdf_components/uploadPdf';
 import Dashboard from './chatbot_components/dashboard';
 import ChatBox from './chatbot_components/chatBox';
 import Project from './db_components/Project';
 import User from './db_components/User';
-
-// Install dependencies
-// npm install react-scripts
-// npm install @mui/material
-// npm install axios
-// npm install @mui/styled-engine
-// npm install @emotion/styled @emotion/react
 
 function App() {
   return (
@@ -32,11 +26,13 @@ function App() {
         <Route path="/Signup" element={<Signup/>}/>
         <Route path="/user/:usrid" element={<User/>}/>
         {/*Project creation/customization components */}
+        <Route path="/UploadPdf" element={<UploadPDF/>}/>
         <Route path="/Subscribe" element={<Subscribe/>}/>
         <Route path="/CreateChatbot" element={<CreateChatbot/>}/>
         <Route path="/Dashboard" element={<Dashboard/>}/>
         <Route path="/project/:projId" element={<Project/>}/>
         <Route path="/chatbot/:projId" element={<ChatBox/>}/>
+        
       </Routes>
       
     </div>
