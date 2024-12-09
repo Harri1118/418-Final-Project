@@ -355,3 +355,15 @@ app.get('/getPdf/:id', async (req, res) => {
         res.status(500).send(error);
     }
 });
+
+//Feedback Form
+app.post('/createFeedbackForm', async (req, res) => {
+    try{
+        const feedback = new FeedBack(req.body);
+        await feedback.save();
+        res.status(200).send('Feedback Added')
+        console.log('FeedBack', req.body)
+    }catch(error){
+        res.status(500).send('FeedBack error');
+    }
+});
