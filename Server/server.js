@@ -374,6 +374,38 @@ app.get('/getPdf/:id', async (req, res) => {
     }
 });
 
+app.post('/favoritePdf', async (req, res) => {
+    try{
+        const {userName, publicPdfId} = req.body
+        const usr = await User.findOne({username : userName})
+        if(!usr){
+            return res.status(404).send("user not found!")
+        }
+        const publicPdf = await PublicFile.findOne({_id : publicPdfId})
+        const newFavoriteFile = new FavoritedFiles({user : usr, file : publicPdf})
+        await newFavoriteFile.save()
+    } catch(error){
+
+    }
+})
+
+app.get('/getFavoritePDFs', async (req, res) => {
+    try{
+        const {userName} = req.body
+        const usr = await User.findOne({username : userName})
+        if(!usr){
+            return res.status(404).send("user not found!")
+        }
+        const favoritePdfs = await FavoritedFiles.find({user : usr})
+        const pdfData = []
+        for(pdf of favoritePdfs){
+            pdfData.push(pdf.file.PDF_File)
+        }
+        return res.status(200).json(favoritePdfs)
+    } catch(error){
+        res.status(500).send(error);
+    }
+})
 //Feedback Form
 app.post('/createFeedbackForm', async (req, res) => {
     try{

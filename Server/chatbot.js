@@ -79,9 +79,11 @@ async function updateConfigWithMongoData(configData) {
             if(chatLog){
                 promptString += chatLog
             }
+            console.log(promptString)
             chatLog = null
             let prompt = ChatPromptTemplate.fromTemplate(promptString)
             chain = prompt.pipe(model)
+            //console.log(prompt)
             stageFile(config.vectorDb)
             const loader = new PDFLoader(PDF_PATH);
             const docs = await loader.load()
@@ -90,7 +92,7 @@ async function updateConfigWithMongoData(configData) {
                 chunkOverlap: 20,
             })
             const splitDocs = await splitter.splitDocuments(docs)
-            console.log(splitDocs)
+            //console.log(splitDocs)
             const embeddings = new OpenAIEmbeddings();
             const vectorStore = await MemoryVectorStore.fromDocuments(
                 splitDocs,
@@ -174,6 +176,7 @@ async function handleUserInput(userInput) {
                 return response.text;
             }
             else{
+                
                 response = await retrievalChain.invoke({
                     input: userInput
                 })
