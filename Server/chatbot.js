@@ -124,6 +124,7 @@ function updateConfigWithChatHistory(chatLog){
     let promptString = addChatLogContextTemplate
     let chatLogString = logs.map(entry => `${entry.sender}: ${entry.text}`).join('\n');
     chatLog = promptString.replace("{chatLog}", chatLogString || "")
+    console.log(chatLog)
 }
 // Mapping template placeholders to actual data from MongoDB object
 function mapTemplateToData(template, data) {
