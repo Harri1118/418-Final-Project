@@ -6,7 +6,8 @@ const multer = require('multer');
 const { PDFDocument } = require('pdf-lib');
 const upload = multer({ dest: 'uploads/' });
 const bodyParser = require('body-parser');
-
+const path = require('path');
+const fs = require("fs")
 const { handleUserInput, updateConfigWithMongoData, updateConfigWithChatHistory } = require('./chatbot');
 
 const User = require('./schemas/baseSchemas/User');
@@ -214,59 +215,100 @@ app.get('/getSubscriptions', async (req, res) => {
     }
 })
 
-app.post('/createPDF', upload.single('file'), async (req, res) => {
-    try {
-        const { user, name, description, isPublic } = req.body;
-        const Owner = await User.findOne({ username: req.body.user });
-        const file = req.file;
+// app.post('/createPDF', upload.single('file'), async (req, res) => {
+//     try {
+//         const { user, name, description, isPublic } = req.body;
+//         const Owner = await User.findOne({ username: req.body.user });
+//         const file = req.file;
 
-        if (!file) {
-            return res.status(400).json({ error: 'No file uploaded' });
-        }
+//         if (!file) {
+//             return res.status(400).json({ error: 'No file uploaded' });
+//         }
 
-        // Check if the PDF already exists in the public schema
-        const existingPublicFile = await PublicFile.findOne({ 'PDF_File.title': name });
-        if (existingPublicFile) {
-            return res.status(400).json({ error: 'PDF already exists in the public schema' });
-        }
+//         // Check if the PDF already exists in the public schema
+//         const existingPublicFile = await PublicFile.findOne({ 'PDF_File.title': name });
+//         if (existingPublicFile) {
+//             return res.status(400).json({ error: 'PDF already exists in the public schema' });
+//         }
+        
+//         // Load the uploaded PDF file from memory
+//         const pdfDoc = await PDFDocument.load(file.buffer);
+//         console.log("test")
+//         // Add metadata to the PDF
+//         pdfDoc.setTitle(name);
+//         pdfDoc.setSubject(description);
 
-        // Load the uploaded PDF file from memory
-        const pdfDoc = await PDFDocument.load(file.buffer);
+//         // Save the modified PDF to a buffer
+//         const modifiedPdfBytes = await pdfDoc.save();
 
-        // Add metadata to the PDF
-        pdfDoc.setTitle(name);
-        pdfDoc.setSubject(description);
+//         // Create the PDF file schema entry
+//         const newPdf = new Pdf({
+//             owner: Owner,
+//             title: name,
+//             description: description,
+//             pdfFile: {
+//                 data: modifiedPdfBytes,
+//                 contentType: 'application/pdf'
+//             }
+//         });
+//         await newPdf.save();
 
-        // Save the modified PDF to a buffer
-        const modifiedPdfBytes = await pdfDoc.save();
+//         // If public, add to the public file schema
+//         if (isPublic) {
+//             const newPublicFile = new PublicFile({
+//                 owner: Owner._id, // Assuming you have user authentication
+//                 PDF_File: newPdf._id
+//             });
+//             await newPublicFile.save();
+//         }
 
-        // Create the PDF file schema entry
-        const newPdf = new Pdf({
-            owner: Owner,
-            title: name,
-            description: description,
-            pdfFile: {
-                data: modifiedPdfBytes,
-                contentType: 'application/pdf'
-            }
+//         res.status(200).send('Success! PDF has been created!');
+//     } catch (error) {
+//         console.error('Error creating PDF:', error);
+//         res.status(500).json({ error: 'Error creating PDF' });
+//     }
+// });
+app.post('/createPDF', upload.single('file'), async (req, res) => { 
+    try { 
+    const { user, name, description, isPublic } = req.body; 
+    const Owner = await User.findOne({username: req.body.user}) 
+    const file = req.file; 
+    if (!file) { 
+        return res.status(400).json({ error: 'No file uploaded' }); 
+    } // Check if the PDF already exists in the public schema 
+    const existingPublicFile = await PublicFile.findOne({ 'PDF_File.title': name }); 
+    if (existingPublicFile) { 
+        return res.status(400).json({ error: 'PDF already exists in the public schema' }); } 
+        // Read the uploaded PDF file 
+        const filePath = path.join(__dirname, file.path); 
+        const pdfBytes = fs.readFileSync(filePath); 
+        const pdfDoc = await PDFDocument.load(pdfBytes); 
+        // Add metadata to the PDF 
+        pdfDoc.setTitle(name); 
+        pdfDoc.setSubject(description); 
+        // Save the modified PDF 
+        const modifiedPdfBytes = await pdfDoc.save(); 
+        const modifiedFilePath = path.join(__dirname, 'uploads',  `${name}.pdf`); 
+        fs.writeFileSync(modifiedFilePath, modifiedPdfBytes); 
+        // Convert Uint8Array to Buffer 
+        const pdfBuffer = Buffer.from(modifiedPdfBytes); 
+        // Create the PDF file schema entry 
+        const newPdf = new Pdf({ owner: Owner, title: name, description: description, pdfFile: { data: pdfBuffer, contentType: 'application/pdf' } }); 
+        await newPdf.save(); 
+        // If public, add to the public file schema 
+        if (isPublic) { 
+            const newPublicFile = new PublicFile({ owner: Owner._id, 
+                // Assuming you have user authentication 
+                PDF_File: newPdf._id }); 
+                await newPublicFile.save(); 
+        } 
+        // Clean up the uploaded file 
+        fs.unlinkSync(filePath); 
+        res.status(200).send('Success! PDF has been created!'); 
+        } catch (error) { 
+                console.error('Error creating PDF:', error); res.status(500).json({ error: 'Error creating PDF' }); 
+            } 
         });
-        await newPdf.save();
-
-        // If public, add to the public file schema
-        if (isPublic) {
-            const newPublicFile = new PublicFile({
-                owner: Owner._id, // Assuming you have user authentication
-                PDF_File: newPdf._id
-            });
-            await newPublicFile.save();
-        }
-
-        res.status(200).send('Success! PDF has been created!');
-    } catch (error) {
-        console.error('Error creating PDF:', error);
-        res.status(500).json({ error: 'Error creating PDF' });
-    }
-});
 
 app.get('/getFileOptionsByUser', async (req, res) => {
     try {
