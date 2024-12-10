@@ -192,6 +192,13 @@ app.post('/configureChatBot', async (req,res) => {
     }
 });
 
+app.post('/setSelectedChatLogToChatBot', async (req, res) => {
+    const{projId, chatLogId} = req.body
+    const chatLog = await ChatLog.findOne({_id : chatLogId})
+    const chatbot = await Chatbot.find({_id : projId})
+    updateConfigWithChatHistory(chatLog.messages, chatbot)
+  })
+
 // Create an endpoint to handle user input
 app.post('/sendMessage', async (req, res) => {
     const userInput = req.body.input;
@@ -215,59 +222,6 @@ app.get('/getSubscriptions', async (req, res) => {
     }
 })
 
-// app.post('/createPDF', upload.single('file'), async (req, res) => {
-//     try {
-//         const { user, name, description, isPublic } = req.body;
-//         const Owner = await User.findOne({ username: req.body.user });
-//         const file = req.file;
-
-//         if (!file) {
-//             return res.status(400).json({ error: 'No file uploaded' });
-//         }
-
-//         // Check if the PDF already exists in the public schema
-//         const existingPublicFile = await PublicFile.findOne({ 'PDF_File.title': name });
-//         if (existingPublicFile) {
-//             return res.status(400).json({ error: 'PDF already exists in the public schema' });
-//         }
-        
-//         // Load the uploaded PDF file from memory
-//         const pdfDoc = await PDFDocument.load(file.buffer);
-//         console.log("test")
-//         // Add metadata to the PDF
-//         pdfDoc.setTitle(name);
-//         pdfDoc.setSubject(description);
-
-//         // Save the modified PDF to a buffer
-//         const modifiedPdfBytes = await pdfDoc.save();
-
-//         // Create the PDF file schema entry
-//         const newPdf = new Pdf({
-//             owner: Owner,
-//             title: name,
-//             description: description,
-//             pdfFile: {
-//                 data: modifiedPdfBytes,
-//                 contentType: 'application/pdf'
-//             }
-//         });
-//         await newPdf.save();
-
-//         // If public, add to the public file schema
-//         if (isPublic) {
-//             const newPublicFile = new PublicFile({
-//                 owner: Owner._id, // Assuming you have user authentication
-//                 PDF_File: newPdf._id
-//             });
-//             await newPublicFile.save();
-//         }
-
-//         res.status(200).send('Success! PDF has been created!');
-//     } catch (error) {
-//         console.error('Error creating PDF:', error);
-//         res.status(500).json({ error: 'Error creating PDF' });
-//     }
-// });
 app.post('/createPDF', upload.single('file'), async (req, res) => { 
     try { 
     const { user, name, description, isPublic } = req.body; 
@@ -338,11 +292,6 @@ app.get('/getFileOptionsByUser', async (req, res) => {
     }
   });
 
-  app.post('/setSelectedChatLogToChatBot', async (req, res) => {
-    const{chatLogId} = req.body
-    const chatLog = await ChatLog.findOne({_id : chatLogId})
-    updateConfigWithChatHistory(chatLog.messages)
-  })
   // Chat log methods
   app.post('/saveChatLog', async (req, res) => {
     try{

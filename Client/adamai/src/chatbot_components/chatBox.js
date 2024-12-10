@@ -175,6 +175,7 @@ const Chatbox = () => {
     console.log("Selected Chat Log:", selectedChatHistory);
     try {
       const response = await axios.post('http://localhost:9000/setSelectedChatLogToChatBot', {
+        projId,
         chatLogId: selectedChatHistory
       });
       console.log(response)
