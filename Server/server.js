@@ -408,3 +408,63 @@ app.post('/createFeedbackForm', async (req, res) => {
         res.status(500).send('FeedBack error');
     }
 });
+
+// Get PDF details for editing
+app.get('/getPdfDetails/:id', async (req, res) => {
+    try {
+      const pdf = await Pdf.findById(req.params.id);
+      if (!pdf) return res.status(404).send('PDF not found');
+      res.status(200).json({
+        title: pdf.title,
+        description: pdf.description
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Error fetching PDF details' });
+    }
+  });
+  
+  // Edit PDF details
+  app.post('/editPdf/:id', upload.single('file'), async (req, res) => {
+    const { title, description } = req.body;
+    const file = req.file;
+  
+    try {
+      const updateData = { title, description };
+  
+      // If a new file is uploaded, process it
+      if (file) {
+        const filePath = path.join(__dirname, file.path);
+        const pdfBytes = fs.readFileSync(filePath);
+  
+        // Validate and load the PDF file
+        const pdfDoc = await PDFDocument.load(pdfBytes);
+        pdfDoc.setTitle(title);
+        pdfDoc.setSubject(description);
+        const modifiedPdfBytes = await pdfDoc.save();
+  
+        // Convert the modified PDF to Buffer
+        const pdfBuffer = Buffer.from(modifiedPdfBytes);
+  
+        updateData.pdfFile = {
+          data: pdfBuffer,
+          contentType: 'application/pdf'
+        };
+  
+        // Delete the temporary uploaded file
+        fs.unlinkSync(filePath);
+      }
+  
+      const updatedPdf = await Pdf.findByIdAndUpdate(
+        req.params.id,
+        updateData,
+        { new: true }
+      );
+  
+      if (!updatedPdf) return res.status(404).send('PDF not found');
+      res.status(200).send('PDF updated successfully');
+    } catch (error) {
+      console.error('Error updating PDF:', error);
+      res.status(500).json({ error: 'Error updating PDF' });
+    }
+  });
+  

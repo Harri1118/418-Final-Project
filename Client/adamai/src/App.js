@@ -14,6 +14,7 @@ import User from './db_components/User';
 import ViewPdfs from "./pdf_components/viewPdfs";
 import EditProject from "./editComponents/editProject"
 import ViewedPdf from './pdf_components/viewedPdf';
+import EditPdf from './pdf_components/editPdf';
 
 function App() {
   return (
