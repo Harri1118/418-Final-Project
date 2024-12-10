@@ -37,6 +37,9 @@ function App() {
         <Route path="/project/:projId" element={<Project/>}/>
         <Route path="/project/editProject/:projId" element={<EditProject/>}/>
         <Route path="/chatbot/:projId" element={<ChatBox/>}/>
+        <Route path="/viewedPdf/:id" element={<ViewedPdf />} />
+        <Route path="/editPdf/:id" element={<EditPdf />} />
+        <Route path="/viewPdfs" element={<ViewPdfs />} />
         
       </Routes>
       
