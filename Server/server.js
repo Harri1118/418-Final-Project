@@ -132,10 +132,11 @@ app.post('/CreateChatbot', async (req, res) => {
     }
 });
 
-app.get('getChatBot', async (req, res) => {
+app.get('/getChatBot', async (req, res) => {
     try{
         const {chatBotId} = req.body;
         const chatbot = await Chatbot.findOne({_id : chatBotId})
+        console.log(chatbot)
         return res.status(200).json(chatbot)
     } catch(error){
         return res.status(500).json({error: "Error retrieving chatbot."})
@@ -180,7 +181,16 @@ app.get('/getProject', async (req, res) => {
         res.status(500).json({ error: 'Error Retrieving projects' });
     }
 })
-
+// /getChatBotById
+app.get('/getChatBotById', async (req, res) => {
+    try {
+        const project = await Chatbot.findOne({ _id: req.query.projId });
+        console.log(project)
+        return res.status(200).json(project);
+    } catch (error) {
+        res.status(500).json({ error: 'Error retrieving projects' });
+    }
+});
 app.post('/configureChatBot', async (req,res) => {
     try{
         const chatbot = await Chatbot.find({_id : req.body.projId});
@@ -268,7 +278,7 @@ app.get('/getFileOptionsByUser', async (req, res) => {
     try {
       // Find the user account
       const userAccount = await User.findOne({ username: req.query.loggedInUser });
-      console.log(userAccount);
+      //console.log(userAccount);
       if (!userAccount) {
         return res.status(404).send('User not found');
       }
@@ -364,6 +374,20 @@ app.get('/getPdf/:id', async (req, res) => {
         res.status(500).send(error);
     }
 });
+
+// Get PDF details for editing
+app.get('/getPdfDetails/:id', async (req, res) => {
+    try {
+      const pdf = await Pdf.findById(req.params.id);
+      if (!pdf) return res.status(404).send('PDF not found');
+      res.status(200).json({
+        title: pdf.title,
+        description: pdf.description
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Error fetching PDF details' });
+    }
+  });
 
 app.post('/favoritePdf', async (req, res) => {
     try{

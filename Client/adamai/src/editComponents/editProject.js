@@ -9,7 +9,7 @@ const EditChatbot = () => {
     // logged in user
     const loggedInUser = localStorage.getItem('loggedInUser');
     const { projId } = useParams();
-    const {chatbot} = useState([]);
+    const [chatbot, setChatBot] = useState([]);
     // Predefined options for dropdowns
     const personalityOptions = ['Friendly', 'Professional', 'Humorous', 'Empathetic', 'Authoritative'];
     const knowledgeLevelOptions = ['Basic', 'Intermediate', 'Advanced', 'Expert'];
@@ -46,60 +46,53 @@ const EditChatbot = () => {
     const [error, setError] = useState(null); // To handle error messages
     const [success, setSuccess] = useState(null);
     useEffect(() => {
-        if (loggedInUser) {
-            axios
-                .get('http://localhost:9000/getFileOptionsByUser', { params: { loggedInUser } })
-                .then((response) => {
-                    setPDFileOptions(response.data); // Assuming the API returns an array of projects
-                    console.log(response);
-                })
-                .catch((error) => {
-                    console.error('Error fetching projects:', error);
-                });
-        }
+        const fetchData = async () => {
+            if (loggedInUser) {
+                try {
+                    const fileOptionsResponse = await axios.get('http://localhost:9000/getFileOptionsByUser', { params: { loggedInUser } });
+                    setPDFileOptions(fileOptionsResponse.data); // Assuming the API returns an array of projects
+    
+                    const chatBotResponse = await axios.get('http://localhost:9000/getChatBotById', { params: { projId } });
+                    //console.log(chatBotResponse); // Check the data here
+                    // simple retrievals
+                    setChatBot(chatBotResponse.data)
+                    setBotName(chatBotResponse.data.name);
+                    setPurpose(chatBotResponse.data.purpose);
+                    setAudience(chatBotResponse.data.audience);
+                    setKeyFunctionalities(chatBotResponse.data.keyFunctions)
+                    setFallBackBehavior(chatBotResponse.data.fallBackBehavior)
+                    setPrivacyNeeds(chatBotResponse.data.privacyNeeds)
+                    // more complicated ones.
+                    setSelectedPersonalities(chatBotResponse.data.personalityTraits)
+                    setKnowledge(chatBotResponse.data.knowledgeLevel)
+                    setSelectedLanguageStyles(chatBotResponse.data.languageStyles)
+                    setTemperature(chatBotResponse.data.temperature)
+                    setWordLimit(chatBotResponse.data.wordLimit)
+                    const combinedData = JSON.parse(chatBotResponse.data.speechPatterns)
+                    console.log(combinedData)
+                    setSelectedPatterns(Object.keys(combinedData.quotes))
+                    console.log(combinedData.quotes("Greeting"))
+                    
+                    //setQuotes(Object.values(combinedData.quotes))
+                    //setQuotes(Object.values(combinedData.quotes))
+                    //console.log(patterns)
+                    //setSpeechPatternOptions(combinedData)
+                    console.log(combinedData)
+                } catch (error) {
+                    console.error('Error fetching data:', error);
+                }
+            }
+        };
+    
+        fetchData();
     }, [loggedInUser]);
 
-    const handleCreateChatBot = async (event) => {
+    const handleEditChatBot = async (event) => {
         event.preventDefault();
 
         setError(null);
         setSuccess(null);
-        const combinedData = JSON.stringify({
-            quotes
-        });
-        console.log(combinedData)
-        //console.log(typeof(quotes))
-        try {
-            const response = await axios.post('http://localhost:9000/CreateChatbot', {
-                owner: loggedInUser,
-                name: botName,
-                purpose: purpose,
-                audience: audience,
-                knowledgeLevel: knowledge,
-                languageStyles: selectedLanguageStyles,
-                personalityTraits: selectedPersonalities,
-                keyFunctions: keyFunctionalities,
-                speechPatterns : combinedData,
-                fallBackBehavior: fallbackBehavior,
-                privacyNeeds: privacyNeeds,
-                temperature: temperature,
-                wordLimit: wordLimit,
-                vectorDb : file._id
-            });
-            setBotName('')
-            setPurpose('')
-            setKnowledge('')
-            setSelectedLanguageStyles([])
-            setSelectedPersonalities([])
-            setKeyFunctionalities('')
-            setFallBackBehavior('')
-            setPrivacyNeeds('')
-            setAudience('')
-            setFile([])
-            setSuccess("Success! " + botName + " has been created!")
-        } catch (err) {
-            setError(`Error posting data: ${err.response ? err.response.data : err.message}`);
-        }    
+        
     };
     
     const handleChange = (event) => {
@@ -155,7 +148,7 @@ const EditChatbot = () => {
             </Typography>
             {success && <Typography variant="h6" color="green">{success}</Typography>}
             {error && <Typography variant="h6" color="red">{error}</Typography>}
-            <form onSubmit={handleCreateChatBot}>
+            <form onSubmit={handleEditChatBot}>
                 <TextField
                     label="Chatbot Name"
                     fullWidth

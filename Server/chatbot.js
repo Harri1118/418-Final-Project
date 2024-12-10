@@ -1,5 +1,5 @@
 const dotenv = require('dotenv');
-dotenv.config(); // Load environment variables first
+dotenv.config();
 
 const { ChatOpenAI } = require('@langchain/openai');
 const { ChatPromptTemplate } = require('@langchain/core/prompts');
@@ -17,45 +17,6 @@ let model = new ChatOpenAI({
     modelName: "gpt-4",
     openAIApiKey: process.env.OPENAI_API_KEY,
 });
-
-// Define the template with placeholders
-const templateNoContext = `
-    You are a chatbot with the following configuration:
-    Name: {{name}}
-    Purpose: {{purpose}}
-    Audience: {{audience}}
-    Language Styles: {{languageStyle}}
-    Personality Traits: {{personalityTraits}}
-    Key Functions: {{keyFunctions}}
-    Speech Patterns: \n{{speechPatterns}}\n
-    Fallback Behavior: {{fallbackBehavior}}
-    Knowledge Level: {{knowledgeLevel}}
-    Privacy Needs: {{privacyNeeds}}
-    
-    Now, answer the following question with the following world limit at {{wordLimit}}:
-    {input}
-`;
-
-// Define the template with placeholders
-const templateWithContext = `
-    You are a chatbot with the following configuration:
-    Name: {{name}}
-    Purpose: {{purpose}}
-    Audience: {{audience}}
-    Language Styles: {{languageStyle}}
-    Personality Traits: {{personalityTraits}}
-    Key Functions: {{keyFunctions}}
-    Speech Patterns: \n{{speechPatterns}}\n
-    Fallback Behavior: {{fallbackBehavior}}
-    Knowledge Level: {{knowledgeLevel}}
-    Privacy Needs: {{privacyNeeds}}
-
-    Now, answer the following question with the following world limit at {{wordLimit}}:
-    {input}
-
-    In order to research the information necesarry, please utilize this context:
-    {context}
-`;
 
 const templateBasicQueries = `
     You are a chatbot with the following configuration:
@@ -149,61 +110,6 @@ async function updateConfigWithMongoData(configData) {
             }
             promptString += mapTemplateToData(addQuestion, config)
             promptString += addQuestion;
-            let prompt = ChatPromptTemplate.fromTemplate(promptString); // Update the prompt template with new data
-            console.log(promptString)
-            chain = prompt.pipe(model)
-        }
-    } catch (error) {
-        console.error("Error updating config with MongoDB data:", error.message);
-    }
-}
-
-async function tupdateConfigWithMongoData(configData) {
-    try {
-        chain = null;
-        retrievalChain = null;
-        let config = configData[0]
-        //console.log(config)
-        model.temperature = Number(config.temperature)
-        if(config.vectorDb){
-            let promptString = mapTemplateToData(templateWithContext, config)
-            if(!chatLog){
-                console.log("chat log isn't null!")
-                promptString += chatLog
-            }
-            //console.log(promptString)
-            chatLog = null
-            let prompt = ChatPromptTemplate.fromTemplate(promptString)
-            chain = prompt.pipe(model)
-            //console.log(prompt)
-            stageFile(config.vectorDb)
-            const loader = new PDFLoader(PDF_PATH);
-            const docs = await loader.load()
-            const splitter = new RecursiveCharacterTextSplitter({
-                chunkSize: 200,
-                chunkOverlap: 20,
-            })
-            const splitDocs = await splitter.splitDocuments(docs)
-            //console.log(splitDocs)
-            const embeddings = new OpenAIEmbeddings();
-            const vectorStore = await MemoryVectorStore.fromDocuments(
-                splitDocs,
-                embeddings
-            )
-            const retriever = vectorStore.asRetriever({
-                k : 3
-            });
-            retrievalChain = await createRetrievalChain({
-                combineDocsChain: chain,
-                retriever
-            });
-        }
-        else{
-            let promptString = mapTemplateToData(templateNoContext, config);
-            if(chatLog){
-                promptString += chatLog
-            }
-            chatLog = null
             let prompt = ChatPromptTemplate.fromTemplate(promptString); // Update the prompt template with new data
             console.log(promptString)
             chain = prompt.pipe(model)
