@@ -9,17 +9,10 @@ const ChatLogSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId, 
         ref: "Chatbot"
     },
-    messages: [{
-        sender: {
-            type: String,
-            enum: ['User', 'Bot'],
-            required: true
-        },
-        text: {
-            type: String,
-            required: true
-        }
-    }]
+    messages:{
+        type: String,
+        required: true
+    }
 })
 
 const ChatLog = mongoose.model('ChatLog', ChatLogSchema);

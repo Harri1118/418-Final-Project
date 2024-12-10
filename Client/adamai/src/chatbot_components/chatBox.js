@@ -68,6 +68,14 @@ const HomeButton = styled(Button)`
   }
 `;
 
+const EditBot = styled(Button)`
+  background-color: #1976d2;
+  color: white;
+  &:hover {
+    background-color: #1565c0;
+  }
+`;
+
 const SelectChatLogButton = styled(Button)`
   background-color: #1976d2;
   color: white;
@@ -106,23 +114,24 @@ const Chatbox = () => {
         .catch((error) => {
           console.error('Error configuring chatbot:', error);
         });
-    }
-  }, [loggedInUser, projId]);
-
-  useEffect(() => {
-    if (loggedInUser && projId) {
+  
       axios
-        .get('http://localhost:9000/getChatLogsBySession', { 
-          userName: loggedInUser,
-          chatBotId: projId })
+        .get('http://localhost:9000/getChatLogsBySession', {
+          params: {
+            userName: loggedInUser,
+            chatBotId: projId
+          }
+        })
         .then((response) => {
-          console.log(response);
+          setChatHistories(response.data); // Corrected line
+          console.log("Loaded chat histories sucessfully.")
         })
         .catch((error) => {
           console.error('Error configuring chatbot:', error);
         });
     }
   }, [loggedInUser, projId]);
+
 
   const sendMessage = async (event) => {
     event.preventDefault();
@@ -161,9 +170,29 @@ const Chatbox = () => {
     setChatLog(selectedLog ? selectedLog.messages : []);
   };
 
-  const handleSelectChatHistory = () => {
+  const handleSelectChatHistory = async (event) => {
     // Logic to handle chat log selection
     console.log("Selected Chat Log:", selectedChatHistory);
+    try {
+      const response = await axios.post('http://localhost:9000/setSelectedChatLogToChatBot', {
+        projId,
+        chatLogId: selectedChatHistory
+      });
+      console.log(response)
+      response = await axios
+      .post('http://localhost:9000/configureChatbot', { projId })
+      .then((response) => {
+        console.log(response);
+      })
+      .catch((error) => {
+        console.error('Error configuring chatbot:', error);
+      });
+      console.log("Response: " + response);
+      // Reload the page after the request is successful
+      window.location.reload();
+    } catch (error) {
+      console.error("Error selecting chat log:", error);
+    }
   };
 
   const handleSaveChatHistory = async (event) => {
@@ -171,7 +200,7 @@ const Chatbox = () => {
     console.log("Saving Chat Log:", chatLog);
 
     try {
-        const response = await axios.post('/saveChatLog', {
+        const response = await axios.post('http://localhost:9000/saveChatLog', {
             userName: loggedInUser,
             chatBotId: projId,
             log: chatLog
@@ -195,24 +224,33 @@ const Chatbox = () => {
           >
             Save Recorded Chat Log
           </SaveChatLogButton>
-          <Select
-            value={selectedChatHistory}
-            onChange={handleChatHistoryChange}
-            displayEmpty
-            style={{ marginRight: 10 }}
-          >
-            <MenuItem value="" disabled>Select Chat Log</MenuItem>
-            {chatHistories.map((log) => (
-              <MenuItem key={log.id} value={log.id}>{log.name}</MenuItem>
-            ))}
-          </Select>
+          <>
+            {selectedChatHistory != null && (
+              <Select
+                value={selectedChatHistory}
+                onChange={handleChatHistoryChange}
+                displayEmpty
+                style={{ marginRight: 10 }}
+              >
+                <MenuItem value="" disabled>Select Chat Log</MenuItem>
+                {chatHistories.map((log) => (
+                  <MenuItem key={log._id} value={log._id}>
+                    {JSON.stringify(JSON.parse(log.messages)[0].text)}
+                  </MenuItem>
+                ))}
+              </Select>
+            )}
+        </>
           <SelectChatLogButton
             onClick={handleSelectChatHistory}
             variant="contained"
             disabled={!selectedChatHistory}
           >
-            Select Chat Log
+            Select Chat History
           </SelectChatLogButton>
+          <EditBot onClick={() => navigate(`/project/editProject/${projId}`)} variant="contained">
+            Edit Chatbot
+          </EditBot>
           <HomeButton onClick={() => navigate('/')} variant="contained">
             Home
           </HomeButton>

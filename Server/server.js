@@ -4,12 +4,11 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const multer = require('multer');
 const { PDFDocument } = require('pdf-lib');
-const fs = require('fs');
-const path = require('path');
 const upload = multer({ dest: 'uploads/' });
 const bodyParser = require('body-parser');
-
-const { handleUserInput, updateConfigWithMongoData } = require('./chatbot');
+const path = require('path');
+const fs = require("fs")
+const { handleUserInput, updateConfigWithMongoData, updateConfigWithChatHistory } = require('./chatbot');
 
 const User = require('./schemas/baseSchemas/User');
 const Chatbot = require('./schemas/baseSchemas/ChatBot');
@@ -133,6 +132,36 @@ app.post('/CreateChatbot', async (req, res) => {
     }
 });
 
+app.get('getChatBot', async (req, res) => {
+    try{
+        const {chatBotId} = req.body;
+        const chatbot = await Chatbot.findOne({_id : chatBotId})
+        return res.status(200).json(chatbot)
+    } catch(error){
+        return res.status(500).json({error: "Error retrieving chatbot."})
+    }
+})
+
+app.post('/editChatBot', async (req, res) => {
+    const{
+        projId,
+        userId,
+        name,
+        purpose,
+        audience,
+        knowledgeLevel,
+        languageStyles,
+        personalityTraits,
+        keyFunctions,
+        speechPatterns,
+        fallBackBehavior,
+        privacyNeeds,
+        temperature,
+        wordLimit,
+        vectorDb
+    } = req.body
+})
+
 app.post('/getProjects', async (req, res) => {
     try {
       const user = await User.findOne({ username: req.body.loggedInUser });
@@ -163,6 +192,13 @@ app.post('/configureChatBot', async (req,res) => {
     }
 });
 
+app.post('/setSelectedChatLogToChatBot', async (req, res) => {
+    const{projId, chatLogId} = req.body
+    const chatLog = await ChatLog.findOne({_id : chatLogId})
+    const chatbot = await Chatbot.find({_id : projId})
+    updateConfigWithChatHistory(chatLog.messages, chatbot)
+  })
+
 // Create an endpoint to handle user input
 app.post('/sendMessage', async (req, res) => {
     const userInput = req.body.input;
@@ -186,69 +222,47 @@ app.get('/getSubscriptions', async (req, res) => {
     }
 })
 
-app.post('/createPDF', upload.single('file'), async (req, res) => {
-    try {
-        const { user, name, description, isPublic } = req.body;
-        const Owner = await User.findOne({username: req.body.user})
-        const file = req.file;
-
-        if (!file) {
-            return res.status(400).json({ error: 'No file uploaded' });
-        }
-
-        // Check if the PDF already exists in the public schema
-        const existingPublicFile = await PublicFile.findOne({ 'PDF_File.title': name });
-        if (existingPublicFile) {
-            return res.status(400).json({ error: 'PDF already exists in the public schema' });
-        }
-
-        // Read the uploaded PDF file
-        const filePath = path.join(__dirname, file.path);
-        const pdfBytes = fs.readFileSync(filePath);
-        const pdfDoc = await PDFDocument.load(pdfBytes);
-
-        // Add metadata to the PDF
-        pdfDoc.setTitle(name);
-        pdfDoc.setSubject(description);
-
-        // Save the modified PDF
-        const modifiedPdfBytes = await pdfDoc.save();
-        const modifiedFilePath = path.join(__dirname, 'uploads', `${name}.pdf`);
-        fs.writeFileSync(modifiedFilePath, modifiedPdfBytes);
-
-        // Convert Uint8Array to Buffer
-        const pdfBuffer = Buffer.from(modifiedPdfBytes);
-
-        // Create the PDF file schema entry
-        const newPdf = new Pdf({
-            owner: Owner,
-            title: name,
-            description: description,
-            pdfFile: {
-                data: pdfBuffer,
-                contentType: 'application/pdf'
-            }
+app.post('/createPDF', upload.single('file'), async (req, res) => { 
+    try { 
+    const { user, name, description, isPublic } = req.body; 
+    const Owner = await User.findOne({username: req.body.user}) 
+    const file = req.file; 
+    if (!file) { 
+        return res.status(400).json({ error: 'No file uploaded' }); 
+    } // Check if the PDF already exists in the public schema 
+    const existingPublicFile = await PublicFile.findOne({ 'PDF_File.title': name }); 
+    if (existingPublicFile) { 
+        return res.status(400).json({ error: 'PDF already exists in the public schema' }); } 
+        // Read the uploaded PDF file 
+        const filePath = path.join(__dirname, file.path); 
+        const pdfBytes = fs.readFileSync(filePath); 
+        const pdfDoc = await PDFDocument.load(pdfBytes); 
+        // Add metadata to the PDF 
+        pdfDoc.setTitle(name); 
+        pdfDoc.setSubject(description); 
+        // Save the modified PDF 
+        const modifiedPdfBytes = await pdfDoc.save(); 
+        const modifiedFilePath = path.join(__dirname, 'uploads',  `${name}.pdf`); 
+        fs.writeFileSync(modifiedFilePath, modifiedPdfBytes); 
+        // Convert Uint8Array to Buffer 
+        const pdfBuffer = Buffer.from(modifiedPdfBytes); 
+        // Create the PDF file schema entry 
+        const newPdf = new Pdf({ owner: Owner, title: name, description: description, pdfFile: { data: pdfBuffer, contentType: 'application/pdf' } }); 
+        await newPdf.save(); 
+        // If public, add to the public file schema 
+        if (isPublic) { 
+            const newPublicFile = new PublicFile({ owner: Owner._id, 
+                // Assuming you have user authentication 
+                PDF_File: newPdf._id }); 
+                await newPublicFile.save(); 
+        } 
+        // Clean up the uploaded file 
+        fs.unlinkSync(filePath); 
+        res.status(200).send('Success! PDF has been created!'); 
+        } catch (error) { 
+                console.error('Error creating PDF:', error); res.status(500).json({ error: 'Error creating PDF' }); 
+            } 
         });
-        await newPdf.save();
-
-        // If public, add to the public file schema
-        if (isPublic) {
-            const newPublicFile = new PublicFile({
-                owner: Owner._id, // Assuming you have user authentication
-                PDF_File: newPdf._id
-            });
-            await newPublicFile.save();
-        }
-
-        // Clean up the uploaded file
-        fs.unlinkSync(filePath);
-
-        res.status(200).send('Success! PDF has been created!');
-    } catch (error) {
-        console.error('Error creating PDF:', error);
-        res.status(500).json({ error: 'Error creating PDF' });
-    }
-});
 
 app.get('/getFileOptionsByUser', async (req, res) => {
     try {
@@ -278,7 +292,6 @@ app.get('/getFileOptionsByUser', async (req, res) => {
     }
   });
 
-
   // Chat log methods
   app.post('/saveChatLog', async (req, res) => {
     try{
@@ -287,11 +300,13 @@ app.get('/getFileOptionsByUser', async (req, res) => {
         if(!usr){
             res.status(500).send("User not found!")
         }
+        
         const chatbot = await Chatbot.findOne({_id : chatBotId})
         if(!chatbot){
             res.status(500).send("Chatbot not found!")
         }
-        const chatLog = new ChatLog({user : usr, chatBot: chatbot, messages: log})
+        const logString = JSON.stringify(log)
+        const chatLog = new ChatLog({user : usr, chatBot: chatbot, messages: logString})
         console.log(chatLog)
         await chatLog.save()
         return res.status(200).send("Success! Chat log created!")
@@ -301,19 +316,95 @@ app.get('/getFileOptionsByUser', async (req, res) => {
   });
 
   app.get('/getChatLogsBySession', async (req, res) => {
+    try {
+        const { userName, chatBotId } = req.query;
+        //console.log(userName, chatBotId)
+        const usr = await User.findOne({ username: userName });
+        if (!usr) {
+            return res.status(500).send("User not found!");
+        }
+        //console.log(usr)
+        const chatbot = await Chatbot.findOne({ _id: chatBotId });
+        if (!chatbot) {
+            return res.status(500).send("Chatbot not found!");
+        }
+        //console.log(chatbot)
+        const logs = await ChatLog.find({ user: usr, chatBot: chatbot });
+        //console.log(logs)
+        return res.status(200).json(logs);
+    } catch (error) {
+        res.status(500).send(error);
+    }
+});
+
+  //endpoints for pdf viewing
+  app.get('/getPublicPdfs', async (req, res) => {
+    try {
+        const publicFiles = await PublicFile.find().populate('PDF_File');
+        const pdfs = publicFiles.map((file) => ({
+            _id: file.PDF_File._id,
+            title: file.PDF_File.title,
+            description: file.PDF_File.description,
+        }));
+        res.status(200).json(pdfs);
+    } catch (error) {
+        res.status(500).json({ error: 'Error fetching public PDFs' });
+    }
+});
+
+app.get('/getPdf/:id', async (req, res) => {
+    try {
+        const pdf = await Pdf.findById(req.params.id);
+        if (!pdf) {
+            return res.status(404).send('PDF not found');
+        }
+        res.contentType('application/pdf');
+        res.send(pdf.pdfFile.data);
+    } catch (error) {
+        res.status(500).send(error);
+    }
+});
+
+app.post('/favoritePdf', async (req, res) => {
     try{
-        const{userName, chatBotId} = req.body
+        const {userName, publicPdfId} = req.body
         const usr = await User.findOne({username : userName})
         if(!usr){
-            res.status(500).send("User not found!")
+            return res.status(404).send("user not found!")
         }
-        const chatbot = await Chatbot.findOne({_id : chatBotId})
-        if(!chatbot){
-            res.status(500).send("Chatbot not found!")
-        }
-        const logs = ChatLog.find({user: usr, chatBot: chatbot})
-        return res.status(200).json(logs)
+        const publicPdf = await PublicFile.findOne({_id : publicPdfId})
+        const newFavoriteFile = new FavoritedFiles({user : usr, file : publicPdf})
+        await newFavoriteFile.save()
     } catch(error){
-        res.status(500).send(error)
+
     }
-  })
+})
+
+app.get('/getFavoritePDFs', async (req, res) => {
+    try{
+        const {userName} = req.body
+        const usr = await User.findOne({username : userName})
+        if(!usr){
+            return res.status(404).send("user not found!")
+        }
+        const favoritePdfs = await FavoritedFiles.find({user : usr})
+        const pdfData = []
+        for(pdf of favoritePdfs){
+            pdfData.push(pdf.file.PDF_File)
+        }
+        return res.status(200).json(favoritePdfs)
+    } catch(error){
+        res.status(500).send(error);
+    }
+})
+//Feedback Form
+app.post('/createFeedbackForm', async (req, res) => {
+    try{
+        const feedback = new FeedBack(req.body);
+        await feedback.save();
+        res.status(200).send('Feedback Added')
+        console.log('FeedBack', req.body)
+    }catch(error){
+        res.status(500).send('FeedBack error');
+    }
+});
