@@ -53,8 +53,6 @@ const EditChatbot = () => {
                     setPDFileOptions(fileOptionsResponse.data); // Assuming the API returns an array of projects
     
                     const chatBotResponse = await axios.get('http://localhost:9000/getChatBotById', { params: { projId } });
-                    //console.log(chatBotResponse); // Check the data here
-                    // simple retrievals
                     setChatBot(chatBotResponse.data)
                     setBotName(chatBotResponse.data.name);
                     setPurpose(chatBotResponse.data.purpose);
@@ -62,22 +60,13 @@ const EditChatbot = () => {
                     setKeyFunctionalities(chatBotResponse.data.keyFunctions)
                     setFallBackBehavior(chatBotResponse.data.fallBackBehavior)
                     setPrivacyNeeds(chatBotResponse.data.privacyNeeds)
-                    // more complicated ones.
                     setSelectedPersonalities(chatBotResponse.data.personalityTraits)
                     setKnowledge(chatBotResponse.data.knowledgeLevel)
                     setSelectedLanguageStyles(chatBotResponse.data.languageStyles)
                     setTemperature(chatBotResponse.data.temperature)
                     setWordLimit(chatBotResponse.data.wordLimit)
                     const combinedData = JSON.parse(chatBotResponse.data.speechPatterns)
-                    console.log(combinedData)
                     setSelectedPatterns(Object.keys(combinedData.quotes))
-                    console.log(combinedData.quotes("Greeting"))
-                    
-                    //setQuotes(Object.values(combinedData.quotes))
-                    //setQuotes(Object.values(combinedData.quotes))
-                    //console.log(patterns)
-                    //setSpeechPatternOptions(combinedData)
-                    console.log(combinedData)
                 } catch (error) {
                     console.error('Error fetching data:', error);
                 }
@@ -90,9 +79,33 @@ const EditChatbot = () => {
     const handleEditChatBot = async (event) => {
         event.preventDefault();
 
-        setError(null);
-        setSuccess(null);
-        
+        const combinedData = JSON.stringify({
+            quotes
+        });
+        console.log(combinedData)
+        //console.log(typeof(quotes))
+        try {
+            const response = await axios.post('http://localhost:9000/editChatbot', {
+                projId: projId,
+                owner: loggedInUser,
+                name: botName,
+                purpose: purpose,
+                audience: audience,
+                knowledgeLevel: knowledge,
+                languageStyles: selectedLanguageStyles,
+                personalityTraits: selectedPersonalities,
+                keyFunctions: keyFunctionalities,
+                speechPatterns : combinedData,
+                fallBackBehavior: fallbackBehavior,
+                privacyNeeds: privacyNeeds,
+                temperature: temperature,
+                wordLimit: wordLimit,
+                vectorDb : file._id
+            });
+            setSuccess("Success! " + botName + " has been edited!")
+        } catch (err) {
+            setError(`Error posting data: ${err.response ? err.response.data : err.message}`);
+        }    
     };
     
     const handleChange = (event) => {
@@ -346,13 +359,13 @@ const EditChatbot = () => {
                     </MenuItem>
                     {PDFileOptions.map((option, index) => (
                         <MenuItem key={index} value={option}>
-                            {option.title} {/* Assuming each option has a 'name' property */}
+                            {option.title}
                         </MenuItem>
                     ))}
                 </Select>
             </FormControl>
                 <Button type="submit" variant="contained" color="primary" fullWidth sx={{ mt: 3 }}>
-                    Create Chatbot
+                    Edit Chatbot
                 </Button>
             </form>
         </Box>

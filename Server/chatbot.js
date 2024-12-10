@@ -55,6 +55,8 @@ let chatLog = null;
 
 async function updateConfigWithMongoData(configData) {
     try {
+        chain = null
+        retrievalChain = null
         // config created
         let config = configData[0]
         //console.log(config)
@@ -73,6 +75,7 @@ async function updateConfigWithMongoData(configData) {
             if(chatLog != null){
                 promptString += chatLog
             }
+            chatLog = null
             //chatLog = null
             // Add the question section
             promptString += mapTemplateToData(addQuestion, config)
@@ -108,6 +111,7 @@ async function updateConfigWithMongoData(configData) {
             if(chatLog){
                 promptString += chatLog
             }
+            chatLog = null
             promptString += mapTemplateToData(addQuestion, config)
             promptString += addQuestion;
             let prompt = ChatPromptTemplate.fromTemplate(promptString); // Update the prompt template with new data

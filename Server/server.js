@@ -124,7 +124,7 @@ app.post('/CreateChatbot', async (req, res) => {
             wordLimit: req.body.wordLimit,
             vectorDb : vectorDb
         });
-        console.log(chatbot)
+        //console.log(chatbot)
         await chatbot.save();
         res.status(200).send("Success! Added chatbot!");
     } catch (error) {
@@ -136,7 +136,7 @@ app.get('/getChatBot', async (req, res) => {
     try{
         const {chatBotId} = req.body;
         const chatbot = await Chatbot.findOne({_id : chatBotId})
-        console.log(chatbot)
+        //console.log(chatbot)
         return res.status(200).json(chatbot)
     } catch(error){
         return res.status(500).json({error: "Error retrieving chatbot."})
@@ -144,23 +144,48 @@ app.get('/getChatBot', async (req, res) => {
 })
 
 app.post('/editChatBot', async (req, res) => {
-    const{
-        projId,
-        userId,
-        name,
-        purpose,
-        audience,
-        knowledgeLevel,
-        languageStyles,
-        personalityTraits,
-        keyFunctions,
-        speechPatterns,
-        fallBackBehavior,
-        privacyNeeds,
-        temperature,
-        wordLimit,
-        vectorDb
-    } = req.body
+    try {
+        const{
+            projId,
+            userId,
+            name,
+            purpose,
+            audience,
+            knowledgeLevel,
+            languageStyles,
+            personalityTraits,
+            keyFunctions,
+            speechPatterns,
+            fallBackBehavior,
+            privacyNeeds,
+            temperature,
+            wordLimit,
+            vectorDb
+        } = req.body
+        const chatbot = await Chatbot.findOne({_id : projId})
+        if (!chatbot) {
+            return res.status(404).json({ error: 'Chatbot not found' });
+        }
+        chatbot.userId = userId;
+        chatbot.name = name;
+        chatbot.purpose = purpose;
+        chatbot.audience = audience;
+        chatbot.knowledgeLevel = knowledgeLevel;
+        chatbot.languageStyles = languageStyles;
+        chatbot.personalityTraits = personalityTraits;
+        chatbot.keyFunctions = keyFunctions;
+        chatbot.speechPatterns = speechPatterns;
+        chatbot.fallBackBehavior = fallBackBehavior;
+        chatbot.privacyNeeds = privacyNeeds;
+        chatbot.temperature = temperature;
+        chatbot.wordLimit = wordLimit;
+        chatbot.vectorDb = vectorDb;
+        await chatbot.save()
+        console.log(chatbot)
+        return res.status(200).json("Success");
+      } catch (error) {
+        res.status(500).json({ error: 'Error retrieving projects' });
+      }
 })
 
 app.post('/getProjects', async (req, res) => {
