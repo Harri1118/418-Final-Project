@@ -13,6 +13,7 @@ import Project from './db_components/Project';
 import User from './db_components/User';
 import ViewPdfs from "./pdf_components/viewPdfs";
 import EditProject from "./editComponents/editProject"
+import ViewedPdf from './pdf_components/viewedPdf';
 
 function App() {
   return (
@@ -36,6 +37,8 @@ function App() {
         <Route path="/project/editProject/:projId" element={<EditProject/>}/>
         <Route path="/chatbot/:projId" element={<ChatBox/>}/>
         <Route path="/viewPdfs" element={<ViewPdfs/>}/>
+        <Route path="/viewedPdf/:id" element={<ViewedPdf />} />
+
         
       </Routes>
       
