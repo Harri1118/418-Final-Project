@@ -32,7 +32,8 @@ function App() {
         <Route path="/Dashboard" element={<Dashboard/>}/>
         <Route path="/project/:projId" element={<Project/>}/>
         <Route path="/chatbot/:projId" element={<ChatBox/>}/>
-        
+        <Route path="/pdf/upload" element={<UploadPDF/>}/>
+        <Route path="/chatbot/create" element={<CreateChatbot/>}/>
       </Routes>
       
     </div>
