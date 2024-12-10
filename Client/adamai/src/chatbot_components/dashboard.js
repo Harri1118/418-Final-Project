@@ -14,6 +14,9 @@ const ProjectCard = styled(Card)`
   background-color: #1976d2; /* Blue card background */
   color: white;
   border-radius: 8px;
+  padding:20px;
+  overflow: hidden;
+  transition: background-color 0.3s ease;
   &:hover {
     background-color: #1565c0;
   }
@@ -54,9 +57,9 @@ const Dashboard = () => {
         My Projects
       </Typography>
       {projects.length > 0 ? (
-        <Grid2 container spacing={3}>
+        <Grid container spacing={3}>
           {projects.map((project, index) => (
-            <Grid2 item xs={12} sm={6} md={4} key={index}>
+            <Grid item xs={12} sm={6} md={4} key={index}>
               <ProjectCard>
                 <CardContent>
                   <Typography variant="h5" style={{ fontWeight: 'bold' }}>
@@ -73,9 +76,9 @@ const Dashboard = () => {
                   </ProjectButton>
                 </CardContent>
               </ProjectCard>
-            </Grid2>
+            </Grid>
           ))}
-        </Grid2>
+        </Grid>
       ) : (
         <Typography variant="h6" style={{ color: '#d32f2f', textAlign: 'center' }}>
           No projects found. Start creating your first project!
