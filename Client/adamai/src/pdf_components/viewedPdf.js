@@ -63,4 +63,9 @@ const ViewedPdf = () => {
   );
 };
 
+<<<<<<< HEAD
 export default ViewedPdf;
+=======
+export default ViewedPdf;
+
+>>>>>>> 77ec743d63c31df89d5104a297e0b0b391a82858

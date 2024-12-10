@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Box, TextField, Typography, Button, Select, MenuItem, InputLabel, FormControl, Stack, IconButton } from '@mui/material';
+import { Box, TextField, Tooltip, Typography, Button, Select, MenuItem, InputLabel, FormControl, Stack, IconButton } from '@mui/material';
+import { HelpOutline } from '@mui/icons-material';
 import { Add, Delete } from '@mui/icons-material';
 import Meter from '../widget_components/Meter';
 import axios from 'axios';
@@ -38,7 +39,7 @@ const CreateChatbot = () => {
     const [fallbackBehavior, setFallBackBehavior] = useState('');
     const [privacyNeeds, setPrivacyNeeds] = useState('');
     const [temperature, setTemperature] = useState('');
-    const [wordLimit, setWordLimit] = useState('');
+    const [wordLimit, setWordLimit] = useState('25');
     const [file, setFile] = useState([])
     const [error, setError] = useState(null); // To handle error messages
     const [success, setSuccess] = useState(null);
@@ -337,8 +338,38 @@ const CreateChatbot = () => {
                     onChange={(e) => setPrivacyNeeds(e.target.value)}
                     required
                 />
-                <Meter value={temperature} onChange={handleTemperatureChange} title="Temperature" min={0} max={1} allowDecimals={true} />
-                <Meter value={wordLimit} onChange={handleWordLimitChange} title="Word Limit" min={1} max={2000} allowDecimals={false} />
+                <Stack direction="row" spacing={2} alignItems="center" mt={2}>
+                    <Meter  title="Temperature" value={temperature} onChange={(e, val) => setTemperature(val.toString())} min={0} max={1} allowDecimals={true} />
+                    <TextField
+                        label="Temp"
+                        value={temperature}
+                        onChange={(e) => setTemperature(e.target.value)}
+                        type="number"
+                        inputProps={{ step: 0.05, min: 0, max: 1 }}
+                        sx={{ width: '100px' }}
+                    />
+                    <Tooltip title="Temperature controls the randomness of chatbot responses. A higher value results in more creative and diverse answers.">
+                        <IconButton>
+                            <HelpOutline />
+                        </IconButton>
+                    </Tooltip>
+                </Stack>
+                <Stack direction="row" spacing={2} alignItems="center" mt={2}>
+                    <Meter title="Word Limit" value={wordLimit} onChange={(e, val) => setWordLimit(val.toString())} min={1} max={800} allowDecimals={false}/>
+                    <TextField
+                        label="Words"
+                        value={wordLimit}
+                        onChange={(e) => setWordLimit(e.target.value)}
+                        type="number"
+                        inputProps={{ min: 1, max: 800 }}
+                        sx={{ width: '100px' }}
+                    />
+                   <Tooltip title="Word limit defines the maximum number of words the chatbot response can contain.">
+                        <IconButton>
+                            <HelpOutline />
+                        </IconButton>
+                    </Tooltip>
+                </Stack>
                 <FormControl fullWidth margin="normal">
                 <InputLabel>Select PDF</InputLabel>
                 <Select
